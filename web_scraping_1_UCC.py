@@ -3,6 +3,24 @@ from selenium.webdriver.support.ui import Select
 import os
 import time
 
+
+""" User Specifications:
+"""
+
+module_codes = ["AM4062"]#, "MA4058", "MF4052", "ST3300", "ST4060", "MF4090", "ST4068"]
+hard_limit = 5  # Maximum number of papers to be downloaded, starting from the most recent
+
+# Developer's login details imported from a separated file for convenience (and obvious security reasons) when testing.
+try:
+    from login_details import student_number, password, download_directory
+except ModuleNotFoundError:
+    student_number = r"<student number>"            # Enter a valid UCC student number here
+    password = r"<password>"                        # UCC Student IT password
+    download_directory = r"<download directory>"    # File path (folder) for the exam papers to be downloaded into
+
+# TODO: Add option to download only winter/summer/autumn papers.
+
+
 """ Function Definitions:
 """
 
@@ -59,7 +77,7 @@ def get_table_row_count(driver, table_xpath):
 
 # Checks if files are still being downloaded.
 def downloads_done(directory, number_of_papers):
-    if len(os.listdir(directory)) != number_of_papers:
+    if (len(os.listdir(directory)) != number_of_papers) or (".crdownload" in os.listdir(directory)):
         time.sleep(1)
         downloads_done(directory, number_of_papers)
 
@@ -69,25 +87,20 @@ def print_log(number_of_papers, module):
     print(f"-I- Downloaded {number_of_papers} papers for {module}")
 
 
-""" User Specifications:
-"""
-
-module_codes = ["AM4062", "MA4058", "MF4052", "ST3300", "ST4060", "MF4090", "ST4068"]
-hard_limit = 5  # Maximum number of papers to be downloaded, starting from the most recent
-
-# Chrome webdriver directory
-chrome_driver_directory = r"C:\Users\nvolf\Anaconda3\chromedriver76.exe"
+# Added this function just for fun and practice. This isn't necessary for downloading the papers.
+# valid_module_extensions = get_valid_module_extensions(student_number, password)
 
 
 """ Main Implementation:
 """
 
-# Added this function just for fun and practice. This isn't necessary for downloading the papers.
-# valid_module_extensions = get_valid_module_extensions(student_number, password)
+# Chrome webdriver directory
+chrome_driver_directory = r"C:\Users\nvolf\Anaconda3\chromedriver76.exe"
 
-
+# Note: We reinitialise the web driver for each new module code since this is the only way
+#       to be able to download the papers in separate folders.
 for module in module_codes:
-    # Open the main/parent URL for accessing papers by subject and logging in if necessary.
+    # Open the main/parent URL for accessing papers, and logging in if necessary.
     module_directory = download_directory + f"\{module}"
     capabilities = create_web_driver_capabilities(module_directory)
     main_driver = webdriver.Chrome(executable_path=chrome_driver_directory, desired_capabilities=capabilities)
