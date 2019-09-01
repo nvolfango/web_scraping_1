@@ -7,9 +7,6 @@ import time
 """ User Specifications:
 """
 
-module_codes = ["AM4062"]#, "MA4058", "MF4052", "ST3300", "ST4060", "MF4090", "ST4068"]
-hard_limit = 5  # Maximum number of papers to be downloaded, starting from the most recent
-
 # Developer's login details imported from a separated file for convenience (and obvious security reasons) when testing.
 try:
     from login_details import student_number, password, download_directory
@@ -17,6 +14,10 @@ except ModuleNotFoundError:
     student_number = r"<student number>"            # Enter a valid UCC student number here
     password = r"<password>"                        # UCC Student IT password
     download_directory = r"<download directory>"    # File path (folder) for the exam papers to be downloaded into
+
+module_codes = ["AM4062", "MA4058", "MF4052", "ST3300", "ST4060", "MF4090", "ST4068"]
+hard_limit = 3# Maximum number of papers to be downloaded, starting from the most recent
+seasons = ["Winter"]
 
 # TODO: Add option to download only winter/summer/autumn papers.
 
@@ -98,7 +99,7 @@ def print_log(number_of_papers, module):
 chrome_driver_directory = r"C:\Users\nvolf\Anaconda3\chromedriver76.exe"
 
 # Note: We reinitialise the web driver for each new module code since this is the only way
-#       to be able to download the papers in separate folders.
+#       to be able to download the papers into separate folders.
 for module in module_codes:
     # Open the main/parent URL for accessing papers, and logging in if necessary.
     module_directory = download_directory + f"\{module}"
@@ -114,8 +115,8 @@ for module in module_codes:
 
     # Find table and count the number of papers available for download.
     table_xpath = r"//*[@id='mainPadder']/table/tbody/tr/td/table/tbody"
-    number_of_rows = get_table_row_count(main_driver, table_xpath)
-    number_of_papers = number_of_rows if hard_limit == 0 else min(number_of_rows, hard_limit)
+    number_of_papers = get_table_row_count(main_driver, table_xpath)
+    download_count = 0
 
     # If there are no search results for the given module code:
     if number_of_papers == 0:
@@ -123,10 +124,19 @@ for module in module_codes:
     else:
         # Begin iterating through the table of papers and downloading each paper.
         for i in range(1, number_of_papers+1):
-            main_driver.find_element_by_xpath(f"//*[@id='mainPadder']/table/tbody/tr/td/table/tbody/tr[{i}]/td[4]/a").click()
+            # If the maximum download limit of papers has been reached
+            if download_count == hard_limit:
+                break
+
+            row_season = main_driver.find_element_by_xpath(
+                f"//*[@id='mainPadder']/table/tbody/tr/td/table/tbody/tr[{i}]/td[3]").text
+            if row_season in seasons:
+                main_driver.find_element_by_xpath(
+                    f"//*[@id='mainPadder']/table/tbody/tr/td/table/tbody/tr[{i}]/td[4]/a").click()
+                download_count += 1
 
         # Wait until downloads have finished before moving on.
-        downloads_done(module_directory, number_of_papers)
+        downloads_done(module_directory, download_count)
 
-    print_log(number_of_papers, module)
+    print_log(download_count, module)
     main_driver.close()
