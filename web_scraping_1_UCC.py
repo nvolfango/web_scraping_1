@@ -15,11 +15,9 @@ except ModuleNotFoundError:
     password = r"<password>"                        # UCC Student IT password
     download_directory = r"<download directory>"    # File path (folder) for the exam papers to be downloaded into
 
-module_codes = ["AM4062", "MA4058", "MF4052", "ST3300", "ST4060", "MF4090", "ST4068"]
-hard_limit = 3# Maximum number of papers to be downloaded, starting from the most recent
-seasons = ["Winter"]
-
-# TODO: Add option to download only winter/summer/autumn papers.
+module_codes = ["EC1213", "EC1500"]
+hard_limit = 10# Maximum number of papers to be downloaded, starting from the most recent
+seasons = ["Winter", "Summer", "Autumn"]
 
 
 """ Function Definitions:
@@ -77,10 +75,12 @@ def get_table_row_count(driver, table_xpath):
 
 
 # Checks if files are still being downloaded.
-def downloads_done(directory, number_of_papers):
-    if (len(os.listdir(directory)) != number_of_papers) or (".crdownload" in os.listdir(directory)):
-        time.sleep(1)
-        downloads_done(directory, number_of_papers)
+def wait_for_downloads(directory, number_of_papers):
+    ext = ".crdownload"
+    if (len(os.listdir(directory)) != number_of_papers)\
+            or next((True for file in os.listdir(directory) if ext in file), False):
+        time.sleep(0.5)
+        wait_for_downloads(directory, number_of_papers)
 
 
 # Prints log for user to see how many papers were downloaded for each module code.
@@ -94,6 +94,10 @@ def print_log(number_of_papers, module):
 
 """ Main Implementation:
 """
+
+# Ensure parent download directory exists
+if not os.path.exists(download_directory):
+    os.mkdir(download_directory)
 
 # Chrome webdriver directory
 chrome_driver_directory = r"C:\Users\nvolf\Anaconda3\chromedriver76.exe"
@@ -120,8 +124,13 @@ for module in module_codes:
 
     # If there are no search results for the given module code:
     if number_of_papers == 0:
-        os.mkdir(module_directory + " (empty)")
+        # Create empty folder/directory
+        if not os.path.exists(module_directory + " (empty)"):
+            os.mkdir(module_directory + " (empty)")
     else:
+        # Create empty folder/directory
+        if not os.path.exists(module_directory):
+            os.mkdir(module_directory)
         # Begin iterating through the table of papers and downloading each paper.
         for i in range(1, number_of_papers+1):
             # If the maximum download limit of papers has been reached
@@ -136,7 +145,7 @@ for module in module_codes:
                 download_count += 1
 
         # Wait until downloads have finished before moving on.
-        downloads_done(module_directory, download_count)
+        wait_for_downloads(module_directory, download_count)
 
     print_log(download_count, module)
     main_driver.close()
